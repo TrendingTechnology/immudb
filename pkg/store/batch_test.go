@@ -49,3 +49,48 @@ func TestSetBatch(t *testing.T) {
 		}
 	}
 }
+
+func TestSetBatchAtomicOperations(t *testing.T) {
+	st, closer := makeStore()
+	defer closer()
+
+	batchSize := 100
+
+	for b := 0; b < 10; b++ {
+		kvList := make([]*schema.KeyValue, batchSize)
+
+		for i := 0; i < batchSize; i++ {
+			key := []byte(strconv.FormatUint(uint64(i), 10))
+			value := []byte(strconv.FormatUint(uint64(b*batchSize+batchSize+i), 10))
+			kvList[i] = &schema.KeyValue{
+				Key:   key,
+				Value: value,
+			}
+		}
+		zOpts := make([]*schema.ZAddOptions, 0)
+		for _, kv := range kvList {
+			zOp := &schema.ZAddOptions{
+				Set:   []byte(`mySet`),
+				Score: &schema.Score{Score: 0.6},
+				Key:   kv.Key,
+				Index: nil,
+			}
+			zOpts = append(zOpts, zOp)
+		}
+
+		aOps := &schema.AtomicOperations{
+			KVs:   kvList,
+			ZOpts: zOpts,
+		}
+		index, err := st.SetBatchAtomicOperations(aOps)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64((b+1)*batchSize*2), index.GetIndex()+1)
+	}
+
+	zScanOpt := schema.ZScanOptions{
+		Set: []byte(`mySet`),
+	}
+	zList, err := st.ZScan(zScanOpt)
+	assert.NoError(t, err)
+	assert.Len(t, zList.Items, batchSize)
+}

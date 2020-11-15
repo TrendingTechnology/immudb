@@ -144,6 +144,11 @@ func (d *Db) GetBatch(kl *schema.KeyList) (*schema.ItemList, error) {
 	return list, nil
 }
 
+// SetBatchAtomicOperations ...
+func (d *Db) SetBatchAtomicOperations(operations *schema.AtomicOperations) (*schema.Index, error) {
+	return d.Store.SetBatchAtomicOperations(operations)
+}
+
 //Count ...
 func (d *Db) Count(prefix *schema.KeyPrefix) (*schema.ItemsCount, error) {
 	return d.Store.Count(*prefix)
